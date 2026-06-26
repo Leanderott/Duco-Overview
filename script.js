@@ -197,11 +197,18 @@ function calculateStats(balance) {
 // -------------------------
 // START
 // -------------------------
-initChart();
+window.addEventListener("load", () => {
+    initChart();
 
-if (!getUser()) {
-    setUser();
+    if (!localStorage.getItem("duco_user")) {
+        setUser();
+    }
+
+    fetchData();
+    console.log("Fetching DUCO data...");
+    setInterval(fetchData, 5000);
+});
 }
-
+console.log(data);
 fetchData();
 setInterval(fetchData, 5000);

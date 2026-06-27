@@ -45,9 +45,11 @@ loginBtn.addEventListener('click', () => {
         
         initChart();
         
+        // Sofortige Abfragen beim Login
         fetchUserData();
         fetchGlobalMarket();
         
+        // Intervalle: Alle 10 Sekunden
         setInterval(fetchUserData, 10000);
         setInterval(fetchGlobalMarket, 10000);
     } else {
@@ -160,7 +162,7 @@ function initChart() {
                     grid: { color: '#111111' }, 
                     ticks: { 
                         color: '#555',
-                        // HIER ERWEITERT AUF 12 STELLEN FÜR HOCHPRÄZISE ANZEIGE
+                        // Auf 12 Nachkommastellen erweitert
                         callback: function(value) { return '$' + value.toFixed(12); }
                     } 
                 }
@@ -175,7 +177,7 @@ function updateChartColor(trend, currentPrice) {
     const ctx = document.getElementById('priceChart').getContext('2d');
     let newGradient = ctx.createLinearGradient(0, 0, 0, 300);
     
-    // Auch hier die Beschriftung des Trends auf 12 Nachkommastellen getrimmt
+    // Trend-Anzeigen ebenfalls auf 12 Nachkommastellen formatiert
     if (trend === 'up') {
         priceChart.data.datasets[0].borderColor = '#00ff00'; 
         newGradient.addColorStop(0, 'rgba(0, 255, 0, 0.2)');
@@ -200,16 +202,13 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- USER DATEN ÜBER PROXY MIT ZWANGS-HEADER (Bypasst JSON-Filtering) ---
+// --- USER DATEN ÜBER UNBLOCKBAREN ALLORIGINS PROXY ---
 function fetchUserData() {
     const rawUrl = `https://server.duinocoin.com/v2/users/${username}`;
-    $.ajax({
-        method: "GET",
-        url: `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`,
-        headers: { "Accept": "application/json" }, // Erzwingt eine unkorrumpierte Objekt-Rückgabe
-        dataType: "json"
-    })
-    .done(function(userData) {
+    
+    $.getJSON(`https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`, function(data) {
+        const userData = JSON.parse(data.contents);
+        
         if (userData && userData.success && userData.result) {
             const miners = userData.result.miners || [];
             const currentMinerCount = miners.length;
@@ -254,29 +253,25 @@ function fetchUserData() {
             }
 
             const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
-            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(6)} <span class="currency">USD</span>`;
+            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(12)} <span class="currency">USD</span>`;
         }
-    })
-    .fail(function(err) {
-        console.error("User Data Sync Error:", err);
+    }).fail(function(err) {
+        console.error("User Data Sync failed:", err);
     });
 }
 
-// --- MARKT PREIS ÜBER PROXY ---
+// --- MARKT PREIS ÜBER UNBLOCKBAREN ALLORIGINS PROXY ---
 function fetchGlobalMarket() {
     const rawUrl = 'https://server.duinocoin.com/api.json';
-    $.ajax({
-        method: "GET",
-        url: `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`,
-        headers: { "Accept": "application/json" },
-        dataType: "json"
-    })
-    .done(function(apiData) {
+    
+    $.getJSON(`https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`, function(data) {
+        const apiData = JSON.parse(data.contents);
+        
         currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
-        document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(6)} <span class="currency">USD</span>`;
+        document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(12)} <span class="currency">USD</span>`;
 
         if (priceChart.data.labels.length > 15) {
             priceChart.data.labels.shift();
@@ -298,8 +293,7 @@ function fetchGlobalMarket() {
         
         lastPrice = currentPriceUsd;
         priceChart.update();
-    })
-    .fail(function(err) {
-        console.error("Market Data Sync Error:", err);
+    }).fail(function(err) {
+        console.error("Market Data Sync failed:", err);
     });
 }

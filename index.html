@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duco-Overview Dashboard</title>
+    <!-- jQuery für stabiles AJAX -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Chart.js für den Live-Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -195,21 +197,24 @@
 </head>
 <body>
 
+    <!-- Login Maske (Behebt die Label-Warnung in der Konsole) -->
     <div id="login-overlay">
         <div class="card login-card">
             <h2>DUCO Overview</h2>
             <p>Enter your Duino-Coin username to start monitoring</p>
-            <label for="username-input" class="hidden">Username</label>
+            <label for="username-input" class="hidden">Username Input</label>
             <input type="text" id="username-input" placeholder="Duino-Coin Username" autocomplete="off">
             <button id="login-btn">Launch Dashboard</button>
         </div>
     </div>
 
+    <!-- Haupt-Dashboard -->
     <div id="dashboard" class="container hidden">
         <div class="header">
             <h1>Duino-Coin <span id="user-display">@USER</span></h1>
         </div>
 
+        <!-- Reihe 1: Krypto-Stats -->
         <div class="grid">
             <div class="card stat-card">
                 <h3>Account Balance</h3>
@@ -225,6 +230,7 @@
             </div>
         </div>
 
+        <!-- Reihe 2: Earnings & Milestones -->
         <div class="grid">
             <div class="card stat-card">
                 <h3>Estimated Daily Earnings</h3>
@@ -243,6 +249,7 @@
             </div>
         </div>
 
+        <!-- Reihe 3: Hardware & Live Chart -->
         <div class="grid" style="grid-template-columns: 1fr 2fr;">
             <div class="card">
                 <h3 style="margin-top:0; font-size:14px; color:var(--text-muted); text-transform:uppercase;">Hardware Breakdown</h3>
@@ -261,10 +268,12 @@
             </div>
         </div>
 
+        <!-- RGB TEXT-TRENNER VOR DEM CHAT (REINES DESIGN) -->
         <div class="donation-card">
             <div class="rgb-btn">💸 Leave a Tip / Donations to leanderott</div>
         </div>
 
+        <!-- Cbox Live-Chat Section -->
         <section class="card comment-section">
             <h3>Global Community Chat</h3>
             <p class="chat-info">Connect with other Duino-Coin miners instantly.</p>
@@ -281,6 +290,7 @@
         </section>
     </div>
 
+    <!-- Achievement Popup HTML -->
     <div id="achievement-popup">
         <div style="display:flex; align-items:center; gap:12px;">
             <span style="font-size:24px;">🏆</span>

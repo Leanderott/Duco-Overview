@@ -45,7 +45,7 @@ loginBtn.addEventListener('click', () => {
         
         initChart();
         
-        // Sofortige Abfrage
+        // Sofortige Abfrage beim Login
         fetchCombinedData();
         
         // Intervall: Alle 20 Sekunden aktualisieren
@@ -198,9 +198,8 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- KRISENSICHERE ABFRAGE ÜBER DEN OFFIZIELLEN GITHUB-API-SPIEGEL ---
+// --- API-ABFRAGE ÜBER DEN OFFIZIELLEN GITHUB-API-SPIEGEL (CASE-INSENSITIVE) ---
 function fetchCombinedData() {
-    // GitHub erlaubt CORS nativ – diese Datei wird niemals blockiert!
     $.ajax({
         url: 'https://raw.githubusercontent.com/revoxhere/duino-coin/gh-pages/api.json',
         method: 'GET',
@@ -225,33 +224,46 @@ function fetchCombinedData() {
             }
             lastPrice = currentPriceUsd;
 
-            // 2. Benutzer-spezifische Daten aus dem globalen State filtern
-            // Die GitHub-API speichert User-Balances direkt unter "Users" oder "Balances"
+            // 2. Case-Insensitive Filter für die Balance
             let userBalance = 0;
-            if (apiData["Balances"] && apiData["Balances"][username]) {
-                userBalance = parseFloat(apiData["Balances"][username]);
-            } else if (apiData["Users orders"] && apiData["Users orders"][username]) {
-                // Manche Versionen nutzen alternative Strukturen
-                userBalance = parseFloat(apiData["Users orders"][username].balance || 0);
+            const searchName = username.toLowerCase();
+
+            if (apiData["Balances"]) {
+                for (const [key, value] of Object.entries(apiData["Balances"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userBalance = parseFloat(value);
+                        break;
+                    }
+                }
+            } else if (apiData["Users orders"]) {
+                for (const [key, value] of Object.entries(apiData["Users orders"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userBalance = parseFloat(value.balance || 0);
+                        break;
+                    }
+                }
             }
 
             document.getElementById('account-balance').innerHTML = `${userBalance.toFixed(2)} <span class="currency">DUCO</span>`;
             handleMilestones(userBalance);
 
-            // 3. Miner-Daten filtern
+            // 3. Case-Insensitive Filter für die Miner
             let totalHashrate = 0;
             let hardwareCounts = {};
             let currentMinerCount = 0;
             calculatedDailyDuco = 0;
 
-            // Wir durchsuchen die globale Miner-Liste nach Einträgen des Users
             if (apiData["Miners"]) {
-                // Falls Miner als Objekt mit User-Keys gespeichert sind
-                if (apiData["Miners"][username]) {
-                    const userMiners = apiData["Miners"][username];
-                    // Wenn es ein Array oder Objekt ist, loopen wir durch
-                    const minerList = Array.isArray(userMiners) ? userMiners : Object.values(userMiners);
-                    
+                let userMinersFound = null;
+                for (const [key, value] of Object.entries(apiData["Miners"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userMinersFound = value;
+                        break;
+                    }
+                }
+
+                if (userMinersFound) {
+                    const minerList = Array.isArray(userMinersFound) ? userMinersFound : Object.values(userMinersFound);
                     minerList.forEach(miner => {
                         currentMinerCount++;
                         if (miner.hashrate) {
@@ -262,10 +274,9 @@ function fetchCombinedData() {
                         hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
                     });
                 } else {
-                    // Falls die Miner-Liste flach ist (Array von allen aktiven Minern weltweit)
                     const allMiners = Array.isArray(apiData["Miners"]) ? apiData["Miners"] : Object.values(apiData["Miners"]);
                     allMiners.forEach(miner => {
-                        if (miner.user && miner.user.toLowerCase() === username) {
+                        if (miner.user && miner.user.toLowerCase() === searchName) {
                             currentMinerCount++;
                             if (miner.hashrate) {
                                 totalHashrate += parseFloat(miner.hashrate);
@@ -278,7 +289,7 @@ function fetchCombinedData() {
                 }
             }
 
-            // Boxen mit den extrahierten Werten befüllen
+            // Boxen befüllen
             document.getElementById('miner-count').textContent = currentMinerCount;
             
             if (lastMinerCount !== -1 && currentMinerCount < lastMinerCount) {
@@ -290,7 +301,7 @@ function fetchCombinedData() {
             document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(2)} <span class="currency">KH/s</span>`;
             document.getElementById('estimated-earnings').innerHTML = `${calculatedDailyDuco.toFixed(2)} <span class="currency">DUCO</span>`;
 
-            // Hardware-Liste neu zeichnen
+            // Hardware-Breakdown rendern
             const breakdownContainer = document.getElementById('hardware-breakdown');
             breakdownContainer.innerHTML = "";
             

@@ -18,7 +18,7 @@ const loginBtn = document.getElementById('login-btn');
 const userDisplay = document.getElementById('user-display');
 const trendIndicator = document.getElementById('trend-indicator');
 
-// --- SPEICHER-FALLBACK (Verhindert Abstürze im Incognito-Modus) ---
+// --- SPEICHER-FALLBACK ---
 let memoryStorage = {};
 
 function safeGetItem(key) {
@@ -136,7 +136,7 @@ function handleMilestones(currentBalance) {
 function initChart() {
     const ctx = document.getElementById('priceChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(255, 102, 0, 0.25)');
+    gradient.addColorStop(0, 'rgba(255, 102, 0, 0.35)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     priceChart = new Chart(ctx, {
@@ -202,15 +202,13 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- USER DATEN ÜBER SICHREN PROXY ABFRAGEN ---
-async function fetchUserData() {
-    try {
-        const targetUrl = `https://server.duinocoin.com/v2/users/${username}`;
-        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-        
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const userData = await response.json();
-        
+// --- USER DATEN DIREKT PER AJAX (Genauso wie im Sinus Monitor) ---
+function fetchUserData() {
+    $.ajax({
+        method: "GET",
+        url: `https://server.duinocoin.com/v2/users/${username}`,
+    })
+    .done(function(userData) {
         if (userData && userData.success && userData.result) {
             const miners = userData.result.miners || [];
             const currentMinerCount = miners.length;
@@ -257,20 +255,19 @@ async function fetchUserData() {
             const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
             document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
         }
-    } catch (error) {
-        console.error("User Data Sync Error:", error);
-    }
+    })
+    .fail(function(err) {
+        console.error("User Data Sync Error via AJAX:", err);
+    });
 }
 
-// --- MARKT PREIS ÜBER SICHREN PROXY ABFRAGEN ---
-async function fetchGlobalMarket() {
-    try {
-        const targetUrl = 'https://server.duinocoin.com/api_context';
-        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-        
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const apiData = await response.json();
-        
+// --- MARKT PREIS DIREKT PER AJAX ---
+function fetchGlobalMarket() {
+    $.ajax({
+        method: "GET",
+        url: 'https://server.duinocoin.com/api_context',
+    })
+    .done(function(apiData) {
         currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -297,7 +294,8 @@ async function fetchGlobalMarket() {
         
         lastPrice = currentPriceUsd;
         priceChart.update();
-    } catch (error) {
-        console.error("Market Data Sync Error:", error);
-    }
+    })
+    .fail(function(err) {
+        console.error("Market Data Sync Error via AJAX:", err);
+    });
 }

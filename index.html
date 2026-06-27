@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duco-Overview Dashboard</title>
+    <!-- jQuery einbinden (wichtig für die fehlerfreie API-Abfrage wie im Sinus Monitor) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Chart.js für den Live-Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -42,8 +44,10 @@
             margin-bottom: 20px;
         }
 
+        /* Das geliebte, intensive orangene Leuchten */
         .box-glow {
-            box-shadow: 0 0 20px rgba(255, 102, 0, 0.05);
+            box-shadow: 0 0 25px rgba(255, 102, 0, 0.15);
+            border-color: rgba(255, 102, 0, 0.2);
         }
 
         /* Login Overlay */
@@ -82,6 +86,7 @@
         input[type="text"]:focus {
             border-color: var(--accent-color);
             outline: none;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
         }
 
         button {
@@ -124,7 +129,7 @@
 
         /* Progress Bar */
         .progress-container { background: #121212; border-radius: 8px; height: 8px; width: 100%; overflow: hidden; margin-top: 8px; }
-        .progress-bar { background: var(--accent-color); height: 100%; width: 0%; transition: width 0.5s ease; }
+        .progress-bar { background: var(--accent-color); height: 100%; width: 0%; transition: width 0.5s ease; box-shadow: 0 0 8px var(--accent-color); }
         .milestone-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 
         /* Hardware Breakdown */
@@ -145,13 +150,46 @@
             background: #111; border: 2px solid var(--accent-color);
             padding: 16px 24px; border-radius: 12px; z-index: 2000;
             transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 0 30px rgba(255,102,0,0.2); pointer-events: none;
+            box-shadow: 0 0 30px rgba(255,102,0,0.4); pointer-events: none;
         }
         #achievement-popup.show { bottom: 30px; }
 
         /* Chat Section */
         .chat-info { color: var(--text-muted); font-size: 14px; margin: -10px 0 15px 0; }
         .comment-section h3 { margin-top: 0; }
+
+        /* --- ANIMIERTER RGB REGENBOGEN BUTTON (DONATIONS) --- */
+        @keyframes rgbGlow {
+            0% { border-color: #ff0000; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
+            33% { border-color: #00ff00; box-shadow: 0 0 15px rgba(0, 255, 0, 0.4); }
+            66% { border-color: #0000ff; box-shadow: 0 0 15px rgba(0, 0, 255, 0.4); }
+            100% { border-color: #ff0000; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
+        }
+
+        .donation-card {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .rgb-btn {
+            background-color: #0c0c0c;
+            color: #ffffff;
+            border: 3px solid #ff0000;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            width: auto;
+            display: inline-block;
+            animation: rgbGlow 4s infinite linear;
+            transition: transform 0.2s;
+        }
+
+        .rgb-btn:hover {
+            transform: scale(1.03);
+            background-color: #111;
+        }
     </style>
 </head>
 <body>
@@ -161,7 +199,7 @@
         <div class="card login-card box-glow">
             <h2>DUCO Overview</h2>
             <p>Enter your Duino-Coin username to start monitoring</p>
-            <input type="text" id="username-input" placeholder="leanderott" autocomplete="off">
+            <input type="text" id="username-input" placeholder="Duino-Coin Username" autocomplete="off">
             <button id="login-btn">Launch Dashboard</button>
         </div>
     </div>
@@ -226,7 +264,7 @@
             </div>
         </div>
 
-        <!-- Deine neue Cbox Live-Chat Section -->
+        <!-- Cbox Live-Chat Section -->
         <section class="card comment-section box-glow">
             <h3>Global Community Chat</h3>
             <p class="chat-info">Connect with other Duino-Coin miners instantly.</p>
@@ -241,6 +279,11 @@
                     scrolling="auto"
                     style="border-radius: 12px; background: #080808;"></iframe>
         </section>
+
+        <!-- DER RGB DONATIONS BUTTON -->
+        <div class="donation-card">
+            <button class="rgb-btn" onclick="window.open('https://server.duinocoin.com/donate.html', '_blank')">Donations to leanderott</button>
+        </div>
     </div>
 
     <!-- Achievement Popup HTML -->

@@ -17,7 +17,7 @@ const trendIndicator = document.getElementById('trend-indicator');
 
 // Event Listener for Login
 loginBtn.addEventListener('click', () => {
-    username = usernameInput.value.trim();
+    username = usernameInput.value.trim().toLowerCase(); // API benötigt Kleinbuchstaben
     if (username !== "") {
         userDisplay.textContent = `@${username.toUpperCase()}`;
         loginOverlay.classList.add('hidden');
@@ -27,8 +27,8 @@ loginBtn.addEventListener('click', () => {
         initChart();
         fetchDucoSystem();
         
-        // Fast-paced data pooling (every 8 seconds)
-        setInterval(fetchDucoSystem, 8000);
+        // GENAU ALLE 10 SEKUNDEN AKTUALISIEREN (10000 ms)
+        setInterval(fetchDucoSystem, 10000);
     } else {
         alert("Please enter a valid Duino-Coin username.");
     }
@@ -67,7 +67,6 @@ function initChart() {
                     grid: { color: '#111111' }, 
                     ticks: { 
                         color: '#555',
-                        // Format labels precisely for small cryptocurrency values
                         callback: function(value) { return '$' + value.toFixed(6); }
                     } 
                 }
@@ -103,34 +102,31 @@ function updateChartColor(trend, currentPrice) {
 async function fetchDucoSystem() {
     try {
         // --- 1. GET USER STATISTICS & LIVE BALANCE ---
-        const userResponse = await fetch(`https://server.duinocoin.com/users/${username}`);
+        const userResponse = await fetch(`https://server.duinocoin.com/v2/users/${username}`);
         const userData = await userResponse.json();
         
         let calculatedDailyDuco = 0;
 
-        if (userData && userData.success) {
-            // Widget: Active Miners Counter
+        if (userData && userData.success && userData.result) {
             const miners = userData.result.miners || [];
             document.getElementById('miner-count').textContent = miners.length;
             
-            // Widget: Live Balance Node (FUNCTION 1)
-            const currentBalance = userData.result.balance.balance || 0;
+            const balanceData = userData.result.balance || {};
+            const currentBalance = balanceData.balance || 0;
             document.getElementById('account-balance').innerHTML = `${currentBalance.toFixed(2)} <span class="currency">DUCO</span>`;
 
-            // Widget: Total Combined Hashrate (FUNCTION 2)
             let totalHashrate = 0;
             miners.forEach(miner => {
-                if (miner.hashrate) totalHashrate += miner.hashrate;
+                if (miner.hashrate) totalHashrate += parseFloat(miner.hashrate);
             });
-            // Convert to KH/s for scannability
+            
             const hashrateKhas = totalHashrate / 1000;
             document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(2)} <span class="currency">KH/s</span>`;
 
-            // Formulate 24h estimation based on system computational metrics
             if (miners.length > 0) {
                 miners.forEach(miner => {
                     if (miner.hashrate) {
-                        calculatedDailyDuco += (miner.hashrate * 0.00864); 
+                        calculatedDailyDuco += (parseFloat(miner.hashrate) * 0.0072); 
                     }
                 });
             }
@@ -141,11 +137,9 @@ async function fetchDucoSystem() {
         const apiResponse = await fetch('https://server.duinocoin.com/api_context');
         const apiData = await apiResponse.json();
         
-        // Safely extract global DUCO to USD price
         const currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        // Widget: Daily Estimated Yield in USD (FUNCTION 3)
         const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
         document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
 
@@ -158,7 +152,6 @@ async function fetchDucoSystem() {
         priceChart.data.labels.push(currentTime);
         priceChart.data.datasets[0].data.push(currentPriceUsd);
 
-        // Map trend analysis out onto layout coloration
         if (lastPrice !== 0) {
             if (currentPriceUsd > lastPrice) {
                 updateChartColor('up', currentPriceUsd);

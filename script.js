@@ -5,9 +5,10 @@ window.onload = function() {
 let username = "";
 let priceChart;
 let lastPrice = 0;
-let lastMinerCount = -1; // -1 stellt sicher, dass beim ersten Laden kein Fehlalarm kommt
+let lastMinerCount = -1; 
+let calculatedDailyDuco = 0;
+let currentPriceUsd = 0.00005; // Standard-Fallback, falls API träge ist
 
-// Meilenstein Stufen
 const milestones = [1, 100, 500, 1000, 10000, 100000, 1000000, 10000000, 100000000];
 
 const loginOverlay = document.getElementById('login-overlay');
@@ -26,27 +27,28 @@ loginBtn.addEventListener('click', () => {
         
         initChart();
         
-        // TURBO CHARGE: Sofort abfragen, nicht erst nach 10 Sekunden warten
-        fetchDucoSystem();
+        // Beide Systeme sofort und unabhängig voneinander triggern
+        fetchUserData();
+        fetchGlobalMarket();
         
-        setInterval(fetchDucoSystem, 10000);
+        // Alle 10 Sekunden Updates ziehen
+        setInterval(fetchUserData, 10000);
+        setInterval(fetchGlobalMarket, 10000);
     } else {
         alert("Please enter a valid Duino-Coin username.");
     }
 });
 
-// Sound Generator (Keine externen MP3s nötig!)
 function playSound(type) {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     if (type === 'achievement') {
-        // Minecraft Ender Dragon / Level Up Akkord-Kaskade
-        const notes = [130.81, 164.81, 196.00, 261.63, 329.63, 392.00, 523.25]; // C-Dur Arpeggio
+        const notes = [130.81, 164.81, 196.00, 261.63, 329.63, 392.00, 523.25]; 
         notes.forEach((freq, index) => {
             setTimeout(() => {
                 let osc = audioCtx.createOscillator();
                 let gain = audioCtx.createGain();
-                osc.type = 'triangle'; // Retro-Chiptune Vibe
+                osc.type = 'triangle'; 
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
@@ -54,10 +56,9 @@ function playSound(type) {
                 gain.connect(audioCtx.destination);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.8);
-            }, index * 80); // Schnelle Abfolge der Töne für den epischen "Ding"-Effekt
+            }, index * 80); 
         });
     } else if (type === 'alarm') {
-        // Tiefer, durchdringender Cyber-Alarmton bei Offline-Geräten
         let osc = audioCtx.createOscillator();
         let gain = audioCtx.createGain();
         osc.type = 'sawtooth';
@@ -72,7 +73,6 @@ function playSound(type) {
     }
 }
 
-// Zeigt die Minecraft-Style Erfolgsnachricht im Dashboard an
 function triggerAchievementNotification(milestoneValue) {
     const popup = document.getElementById('achievement-popup');
     document.getElementById('achievement-text').innerHTML = `You just passed the <strong>${milestoneValue.toLocaleString()} DUCO</strong> Milestone!`;
@@ -80,12 +80,9 @@ function triggerAchievementNotification(milestoneValue) {
     playSound('achievement');
     popup.classList.add('show');
     
-    setTimeout(() => {
-        popup.classList.remove('show');
-    }, 5000); // Verschwindet nach 5 Sekunden wieder
+    setTimeout(() => { popup.classList.remove('show'); }, 5000);
 }
 
-// Meilenstein Verarbeitungs-Logik
 function handleMilestones(currentBalance) {
     let currentTarget = milestones[0];
     let previousTarget = 0;
@@ -98,19 +95,14 @@ function handleMilestones(currentBalance) {
         }
     }
     
-    // Prüfen, ob im lokalen Speicher der letzte Meilenstein vermerkt ist
     let savedMilestone = localStorage.getItem(`duco_milestone_${username}`);
     if (savedMilestone && parseFloat(savedMilestone) < currentTarget && previousTarget > 0) {
-        // Verhindert das Feuern beim allerersten Laden der Seite
-        if (currentBalance >= previousTarget && parseFloat(savedMilestone) == previousTarget) {
-            // Nichts tun, wir sind auf dem aktuellen Stand
-        } else if (parseFloat(savedMilestone) < previousTarget) {
+        if (currentBalance >= previousTarget && parseFloat(savedMilestone) < previousTarget) {
             triggerAchievementNotification(previousTarget);
         }
     }
     localStorage.setItem(`duco_milestone_${username}`, currentTarget);
 
-    // Fortschritt berechnen
     document.getElementById('next-milestone-val').textContent = `${currentTarget.toLocaleString()} DUCO`;
     let range = currentTarget - previousTarget;
     let progressInRange = currentBalance - previousTarget;
@@ -121,7 +113,6 @@ function handleMilestones(currentBalance) {
     document.getElementById('milestone-progress').style.width = `${percent}%`;
 }
 
-// Diagramm-Engine Setup (Berg-Style)
 function initChart() {
     const ctx = document.getElementById('priceChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -157,9 +148,7 @@ function initChart() {
                     } 
                 }
             },
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
@@ -193,48 +182,44 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// Master Engine
-async function fetchDucoSystem() {
+// --- SEPARATE ABFRAGE 1: USER DATEN (Läuft völlig unabhängig) ---
+async function fetchUserData() {
     try {
-        // --- 1. USER DATA & MINERS ---
         const userResponse = await fetch(`https://server.duinocoin.com/v2/users/${username}`);
         const userData = await userResponse.json();
         
-        let calculatedDailyDuco = 0;
-
         if (userData && userData.success && userData.result) {
             const miners = userData.result.miners || [];
             const currentMinerCount = miners.length;
             document.getElementById('miner-count').textContent = currentMinerCount;
             
-            // CRITICAL CHECK: Ist ein Miner offline gegangen?
             if (lastMinerCount !== -1 && currentMinerCount < lastMinerCount) {
                 playSound('alarm');
             }
             lastMinerCount = currentMinerCount;
 
-            // Balance & Meilenstein-Check
             const balanceData = userData.result.balance || {};
             const currentBalance = balanceData.balance || 0;
             document.getElementById('account-balance').innerHTML = `${currentBalance.toFixed(2)} <span class="currency">DUCO</span>`;
             handleMilestones(currentBalance);
 
-            // Hashrate & Hardware-Aufschlüsselungs Logik
             let totalHashrate = 0;
             let hardwareCounts = {};
+            calculatedDailyDuco = 0; // Reset für Neuberechnung
 
             miners.forEach(miner => {
-                if (miner.hashrate) totalHashrate += parseFloat(miner.hashrate);
-                
-                // Software/Hardware Typ filtern (z.B. AVR, ESP, CPU)
+                if (miner.hashrate) {
+                    totalHashrate += parseFloat(miner.hashrate);
+                    calculatedDailyDuco += (parseFloat(miner.hashrate) * 0.0072);
+                }
                 let software = miner.software || "Unknown Device";
                 hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
             });
             
             const hashrateKhas = totalHashrate / 1000;
             document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(2)} <span class="currency">KH/s</span>`;
+            document.getElementById('estimated-earnings').innerHTML = `${calculatedDailyDuco.toFixed(2)} <span class="currency">DUCO</span>`;
 
-            // Hardware-Breakdown HTML generieren
             const breakdownContainer = document.getElementById('hardware-breakdown');
             breakdownContainer.innerHTML = "";
             for (const [hwName, count] of Object.entries(hardwareCounts)) {
@@ -246,27 +231,27 @@ async function fetchDucoSystem() {
                 `;
             }
 
-            if (miners.length > 0) {
-                miners.forEach(miner => {
-                    if (miner.hashrate) {
-                        calculatedDailyDuco += (parseFloat(miner.hashrate) * 0.0072); 
-                    }
-                });
-            }
-            document.getElementById('estimated-earnings').innerHTML = `${calculatedDailyDuco.toFixed(2)} <span class="currency">DUCO</span>`;
+            // Direkt USD updaten, falls Marktpreis schon da ist
+            const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
+            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
         }
+    } catch (error) {
+        console.error("User Data Sync Error:", error);
+    }
+}
 
-        // --- 2. MARKET API ---
+// --- SEPARATE ABFRAGE 2: MARKT PREIS & GRAPH ---
+async function fetchGlobalMarket() {
+    try {
         const apiResponse = await fetch('https://server.duinocoin.com/api_context');
         const apiData = await apiResponse.json();
         
-        const currentPriceUsd = apiData["Duco price"] || 0.00005;
+        currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
         document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
 
-        // --- 3. CHART ---
         if (priceChart.data.labels.length > 15) {
             priceChart.data.labels.shift();
             priceChart.data.datasets[0].data.shift();
@@ -287,8 +272,7 @@ async function fetchDucoSystem() {
         
         lastPrice = currentPriceUsd;
         priceChart.update();
-
     } catch (error) {
-        console.error("Dashboard Sync Error:", error);
+        console.error("Market Data Sync Error:", error);
     }
 }

@@ -8,7 +8,6 @@
     <!-- Chart.js for real-time visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Zusatz-Styles für die neuen Features ohne das Hauptdesign zu verändern -->
     <style>
         /* Hardware-Liste Style */
         .hardware-list {
@@ -120,13 +119,12 @@
         </header>
 
         <main class="grid-container">
-            <!-- Card 1: Active Miners (Mit Hardware-Aufschlüsselung) -->
+            <!-- Card 1: Active Miners -->
             <div class="card box-glow">
                 <div class="card-icon">⚡</div>
                 <h3>Active Miners</h3>
                 <p id="miner-count" class="stat-value">0</p>
                 <span class="stat-desc">Working CPUs / Devices</span>
-                <!-- Hier klinkt sich die Hardware-Liste ein -->
                 <div id="hardware-breakdown" class="hardware-list"></div>
             </div>
 
@@ -138,18 +136,17 @@
                 <span class="stat-desc">Combined cluster mining speed</span>
             </div>
 
-            <!-- Card 3: Account Balance (Mit Meilenstein-Balken) -->
+            <!-- Card 3: Account Balance -->
             <div class="card box-glow">
                 <div class="card-icon">💰</div>
                 <h3>Current Balance</h3>
                 <p id="account-balance" class="stat-value">0.00 <span class="currency">DUCO</span></p>
                 <span class="stat-desc">Your total dynamic wallet balance</span>
                 
-                <!-- Hier klinkt sich der Meilenstein ein -->
                 <div class="milestone-container">
                     <div class="milestone-label">
                         <span>Next Milestone:</span>
-                        <span id="next-milestone-val">100 DUCO</span>
+                        <span id="next-milestone-val">1 DUCO</span>
                     </div>
                     <div class="progress-bar-bg">
                         <div id="milestone-progress" class="progress-bar-fill"></div>
@@ -185,7 +182,7 @@
             </div>
         </main>
 
-        <!-- Donation Widget with RGB Border -->
+        <!-- Donation Widget -->
         <section class="donation-section rgb-glow">
             <h3>Support the Project</h3>
             <p>If you like this overview, consider sending a small tip to the developer!</p>

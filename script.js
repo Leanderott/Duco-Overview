@@ -45,11 +45,9 @@ loginBtn.addEventListener('click', () => {
         
         initChart();
         
-        // Sofort beim Login Daten abrufen
         fetchUserData();
         fetchGlobalMarket();
         
-        // Regelmäßiges Abfragen alle 10 Sekunden
         setInterval(fetchUserData, 10000);
         setInterval(fetchGlobalMarket, 10000);
     } else {
@@ -162,7 +160,8 @@ function initChart() {
                     grid: { color: '#111111' }, 
                     ticks: { 
                         color: '#555',
-                        callback: function(value) { return '$' + value.toFixed(6); }
+                        // HIER ERWEITERT AUF 12 STELLEN FÜR HOCHPRÄZISE ANZEIGE
+                        callback: function(value) { return '$' + value.toFixed(12); }
                     } 
                 }
             },
@@ -176,23 +175,24 @@ function updateChartColor(trend, currentPrice) {
     const ctx = document.getElementById('priceChart').getContext('2d');
     let newGradient = ctx.createLinearGradient(0, 0, 0, 300);
     
+    // Auch hier die Beschriftung des Trends auf 12 Nachkommastellen getrimmt
     if (trend === 'up') {
         priceChart.data.datasets[0].borderColor = '#00ff00'; 
         newGradient.addColorStop(0, 'rgba(0, 255, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Price Rising ▲ ($${currentPrice.toFixed(6)})`;
+        trendIndicator.textContent = `Price Rising ▲ ($${currentPrice.toFixed(12)})`;
         trendIndicator.className = "trend-up";
     } else if (trend === 'down') {
         priceChart.data.datasets[0].borderColor = '#ff0000'; 
         newGradient.addColorStop(0, 'rgba(255, 0, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Price Falling ▼ ($${currentPrice.toFixed(6)})`;
+        trendIndicator.textContent = `Price Falling ▼ ($${currentPrice.toFixed(12)})`;
         trendIndicator.className = "trend-down";
     } else {
         priceChart.data.datasets[0].borderColor = '#ff6600'; 
         newGradient.addColorStop(0, 'rgba(255, 102, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Stable ($${currentPrice.toFixed(6)})`;
+        trendIndicator.textContent = `Stable ($${currentPrice.toFixed(12)})`;
         trendIndicator.className = "trend-neutral";
     }
     
@@ -200,12 +200,14 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- USER DATEN ABFRAGEN ---
+// --- USER DATEN ÜBER PROXY MIT ZWANGS-HEADER (Bypasst JSON-Filtering) ---
 function fetchUserData() {
     const rawUrl = `https://server.duinocoin.com/v2/users/${username}`;
     $.ajax({
         method: "GET",
         url: `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`,
+        headers: { "Accept": "application/json" }, // Erzwingt eine unkorrumpierte Objekt-Rückgabe
+        dataType: "json"
     })
     .done(function(userData) {
         if (userData && userData.success && userData.result) {
@@ -252,29 +254,29 @@ function fetchUserData() {
             }
 
             const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
-            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
+            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(6)} <span class="currency">USD</span>`;
         }
     })
     .fail(function(err) {
-        console.error("User Data Sync Error via CORSProxy:", err);
+        console.error("User Data Sync Error:", err);
     });
 }
 
-// --- MARKT PREIS ABFRAGEN (KORRIGIERTER ENDPUNKT) ---
+// --- MARKT PREIS ÜBER PROXY ---
 function fetchGlobalMarket() {
-    // Hier lag der Fehler: api.json ist die richtige Datei auf dem Server!
     const rawUrl = 'https://server.duinocoin.com/api.json';
     $.ajax({
         method: "GET",
         url: `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`,
+        headers: { "Accept": "application/json" },
+        dataType: "json"
     })
     .done(function(apiData) {
-        // Auslesen des Preises aus der offiziellen Struktur von api.json
         currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
-        document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(4)} <span class="currency">USD</span>`;
+        document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(6)} <span class="currency">USD</span>`;
 
         if (priceChart.data.labels.length > 15) {
             priceChart.data.labels.shift();
@@ -298,6 +300,6 @@ function fetchGlobalMarket() {
         priceChart.update();
     })
     .fail(function(err) {
-        console.error("Market Data Sync Error via CORSProxy:", err);
+        console.error("Market Data Sync Error:", err);
     });
 }

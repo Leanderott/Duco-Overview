@@ -202,13 +202,14 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- USER DATEN ÜBER PROXY ABFRAGEN ---
+// --- USER DATEN ÜBER SICHREN PROXY ABFRAGEN ---
 async function fetchUserData() {
     try {
         const targetUrl = `https://server.duinocoin.com/v2/users/${username}`;
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        const proxyData = await response.json();
-        const userData = JSON.parse(proxyData.contents);
+        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const userData = await response.json();
         
         if (userData && userData.success && userData.result) {
             const miners = userData.result.miners || [];
@@ -261,13 +262,14 @@ async function fetchUserData() {
     }
 }
 
-// --- MARKT PREIS ÜBER PROXY ABFRAGEN ---
+// --- MARKT PREIS ÜBER SICHREN PROXY ABFRAGEN ---
 async function fetchGlobalMarket() {
     try {
         const targetUrl = 'https://server.duinocoin.com/api_context';
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        const proxyData = await response.json();
-        const apiData = JSON.parse(proxyData.contents);
+        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const apiData = await response.json();
         
         currentPriceUsd = apiData["Duco price"] || 0.00005;
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });

@@ -200,7 +200,9 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
+// Haupt-Abfragefunktion, die beide APIs sauber trennt
 function fetchCombinedData() {
+    // Coingecko abfragen (asynchron, blockiert die Miner-Daten nicht mehr)
     $.ajax({
         url: 'https://api.coingecko.com/api/v3/simple/price?ids=duino-coin&vs_currencies=usd',
         method: 'GET',
@@ -209,24 +211,25 @@ function fetchCombinedData() {
             if (coingeckoData["duino-coin"] && coingeckoData["duino-coin"].usd) {
                 currentPriceUsd = coingeckoData["duino-coin"].usd;
             }
-            fetchMinerAndBalanceData();
         },
         error: function() {
-            console.warn("Coingecko live price ticker timed out. Using fallback.");
-            fetchMinerAndBalanceData();
+            console.warn("Coingecko live price ticker timed out. Fallback active.");
         }
     });
+
+    // Miner und Balances separat abfragen (läuft immer durch!)
+    fetchMinerAndBalanceData();
 }
 
 function fetchMinerAndBalanceData() {
     $.ajax({
-        // FIX: Wir nutzen jetzt die direkte offizielle API-URL anstelle von GitHub!
-        url: 'https://server.duinocoin.com/api.json',
+        url: 'https://raw.githubusercontent.com/revoxhere/duino-coin/master/api.json',
         method: 'GET',
         dataType: 'json',
         success: function(apiData) {
-            if (currentPriceUsd === 0.00007021 || currentPriceUsd === 0.00005) {
-                currentPriceUsd = apiData["Duco price"] || currentPriceUsd;
+            // Falls Coingecko vorhin keine Daten hatte, nutzen wir den Wert aus der JSON-Datei
+            if (apiData["Duco price"] && (currentPriceUsd === 0.00007021 || currentPriceUsd === 0.00005)) {
+                currentPriceUsd = apiData["Duco price"];
             }
 
             const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });

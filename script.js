@@ -145,8 +145,8 @@ function initChart() {
                 borderColor: '#ff6600', 
                 backgroundColor: gradient,
                 borderWidth: 3,
-                tension: 0.4, // Sorgt für perfekt abgerundete, geschwungene Kurven
-                cubicInterpolationMode: 'monotone', // Verhindert unnatürliches Überschwingen der Kurve
+                tension: 0.4, 
+                cubicInterpolationMode: 'monotone', 
                 pointRadius: 2,
                 pointBackgroundColor: '#ffffff',
                 fill: true
@@ -220,7 +220,8 @@ function fetchCombinedData() {
 
 function fetchMinerAndBalanceData() {
     $.ajax({
-        url: 'https://raw.githubusercontent.com/revoxhere/duino-coin/master/api.json',
+        // FIX: Wir nutzen jetzt die direkte offizielle API-URL anstelle von GitHub!
+        url: 'https://server.duinocoin.com/api.json',
         method: 'GET',
         dataType: 'json',
         success: function(apiData) {

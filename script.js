@@ -264,32 +264,44 @@ function fetchCombinedData() {
             let currentMinerCount = 0;
             calculatedDailyDuco = 0;
 
+            let formulaEarnings = 0;
             const miners = result.miners || [];
             miners.forEach(miner => {
                 currentMinerCount++;
                 const hr = parseFloat(miner.hashrate) || 0;
                 totalHashrate += hr;
 
-
+                // Formel-Fallback: sharetime + diff
+                const sharetime = parseFloat(miner.sharetime) || 1;
+                const diff = parseFloat(miner.diff) || 0;
+                formulaEarnings += (86400 / sharetime) * (diff / 1000000);
 
                 const software = miner.software || "Unknown Device";
                 hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
             });
 
-            // Earnings per 24h basierend auf echtem Balance-Zuwachs
+            // Earnings per 24h: Balance-Delta Methode mit Formel als Fallback
             const now = Date.now();
             balanceHistory.push({ balance: userBalance, time: now });
-            if (balanceHistory.length > 20) balanceHistory.shift(); // max 20 Einträge (~100 Sek)
+            if (balanceHistory.length > 60) balanceHistory.shift();
 
+            let deltaWorked = false;
             if (balanceHistory.length >= 2) {
                 const oldest = balanceHistory[0];
                 const newest = balanceHistory[balanceHistory.length - 1];
                 const elapsedSeconds = (newest.time - oldest.time) / 1000;
                 const balanceDelta = newest.balance - oldest.balance;
-                if (elapsedSeconds > 0 && balanceDelta > 0) {
+                if (elapsedSeconds > 0 && balanceDelta >= 0.000001) {
                     calculatedDailyDuco = (balanceDelta / elapsedSeconds) * 86400;
+                    deltaWorked = true;
                 }
             }
+
+            // Nutze Formel wenn Balance-Delta nicht funktioniert
+            if (!deltaWorked && formulaEarnings > 0) {
+                calculatedDailyDuco = formulaEarnings;
+            }
+
             liveEarningsPerSecond = calculatedDailyDuco / 86400;
 
             // Boxen befüllen
@@ -303,11 +315,9 @@ function fetchCombinedData() {
             const hashrateKhas = totalHashrate / 1000;
             document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(4)} <span class="currency">KH/s</span>`;
             if (calculatedDailyDuco > 0) {
+                const label = deltaWorked ? '~' : '≈';
                 document.getElementById('estimated-earnings').innerHTML =
-                    `${calculatedDailyDuco.toFixed(8)} <span class="currency">DUCO</span>`;
-            } else {
-                document.getElementById('estimated-earnings').innerHTML =
-                    `<span style="color:var(--text-muted);font-size:13px;">Wird gemessen...</span>`;
+                    `${label}${calculatedDailyDuco.toFixed(8)} <span class="currency">DUCO</span>`;
             }
 
             // Hardware-Breakdown rendern

@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duco-Overview Dashboard</title>
-    <!-- jQuery für stabiles AJAX -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Chart.js für den Live-Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -238,7 +236,6 @@
 </head>
 <body>
 
-    <!-- Login Maske -->
     <div id="login-overlay">
         <div class="card login-card">
             <h2>DUCO Overview</h2>
@@ -249,16 +246,13 @@
         </div>
     </div>
 
-    <!-- Card Overlay -->
     <div id="card-overlay"></div>
 
-    <!-- Haupt-Dashboard -->
     <div id="dashboard" class="container hidden">
         <div class="header">
             <h1>Duino-Coin <span id="user-display">@USER</span></h1>
         </div>
 
-        <!-- Reihe 1: Krypto-Stats -->
         <div class="grid">
             <div class="card stat-card" data-expandable>
                 <h3>Account Balance</h3>
@@ -277,7 +271,6 @@
             </div>
         </div>
 
-        <!-- Reihe 2: Earnings & Milestones -->
         <div class="grid">
             <div class="card stat-card" data-expandable>
                 <h3>Estimated Daily Earnings</h3>
@@ -298,7 +291,6 @@
             </div>
         </div>
 
-        <!-- Reihe 3: Hardware & Live Chart -->
         <div class="grid" style="grid-template-columns: 1fr 2fr;">
             <div class="card" data-expandable>
                 <h3 style="margin-top:0; font-size:14px; color:var(--text-muted); text-transform:uppercase;">Hardware Breakdown</h3>
@@ -309,22 +301,20 @@
             </div>
             <div class="card" data-expandable>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="margin:0; font-size:14px; color:var(--text-muted); text-transform:uppercase;">BSC DUCO Price (PancakeSwap)</h3>
+                    <h3 style="margin:0; font-size:14px; color:var(--text-muted); text-transform:uppercase;">Global DUCO Market Price</h3>
                     <div id="trend-indicator" class="trend-neutral">Syncing...</div>
                 </div>
-                <div class="card-description" style="margin-top:4px;">Live DUCO price on Binance Smart Chain via PancakeSwap DEX. Updates every 5 seconds.</div>
+                <div class="card-description" style="margin-top:4px;">Live global DUCO price from the official Duino-Coin API server. Updates every 5 seconds.</div>
                 <div class="chart-container">
                     <canvas id="priceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Sektions-Trenner -->
         <div class="donation-card">
             <div class="rgb-btn">Leave a Tip / Donations to leanderott</div>
         </div>
 
-        <!-- Cbox Live-Chat Section -->
         <section class="card comment-section">
             <h3>Global Community Chat</h3>
             <p class="chat-info">Connect with other Duino-Coin miners instantly.</p>
@@ -341,7 +331,6 @@
         </section>
     </div>
 
-    <!-- Achievement Popup HTML -->
     <div id="achievement-popup">
         <div style="display:flex; align-items:center; gap:12px;">
             <span style="font-size:24px;">🏆</span>

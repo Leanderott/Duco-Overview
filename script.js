@@ -219,7 +219,8 @@ function fetchCombinedData() {
                 return;
             }
 
-            const result = data;
+            // corsproxy gibt manchmal {contents: "..."} zurück
+            const result = data.result ? data.result : data;
 
             // Preis direkt aus der v2 API (max price = höchster verfügbarer Kurs)
             if (data.prices && data.prices.max > 0) {

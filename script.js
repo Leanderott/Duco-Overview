@@ -7,11 +7,7 @@ let priceChart;
 let lastPrice = 0;
 let lastMinerCount = -1; 
 let calculatedDailyDuco = 0;
-let currentPriceUsd = 0.00005;
-let liveBalance = 0;
-let liveEarningsPerSecond = 0;
-let liveCounterInterval = null;
-let balanceHistory = []; // [{balance, time}]
+let currentPriceUsd = 0.00007021; 
 
 const milestones = [1, 100, 500, 1000, 10000, 100000, 1000000, 10000000, 100000000];
 
@@ -41,7 +37,7 @@ function safeSetItem(key, value) {
 }
 
 loginBtn.addEventListener('click', () => {
-    username = usernameInput.value.trim();
+    username = usernameInput.value.trim().toLowerCase(); 
     if (username !== "") {
         userDisplay.textContent = `@${username.toUpperCase()}`;
         loginOverlay.classList.add('hidden');
@@ -52,9 +48,8 @@ loginBtn.addEventListener('click', () => {
         // Sofortige Abfrage beim Login
         fetchCombinedData();
         
-        // Intervall: Alle 5 Sekunden aktualisieren
-        setInterval(fetchCombinedData, 5000);
-
+        // Intervall: Alle 20 Sekunden aktualisieren
+        setInterval(fetchCombinedData, 20000);
     } else {
         alert("Please enter a valid Duino-Coin username.");
     }
@@ -150,7 +145,8 @@ function initChart() {
                 borderColor: '#ff6600', 
                 backgroundColor: gradient,
                 borderWidth: 3,
-                tension: 0.4,
+                tension: 0.4, // Sorgt für perfekt abgerundete, geschwungene Kurven
+                cubicInterpolationMode: 'monotone', // Verhindert unnatürliches Überschwingen der Kurve
                 pointRadius: 2,
                 pointBackgroundColor: '#ffffff',
                 fill: true
@@ -163,9 +159,10 @@ function initChart() {
                 x: { grid: { color: '#111111' }, ticks: { color: '#555' } },
                 y: { 
                     grid: { color: '#111111' }, 
+                    bounds: 'data', 
                     ticks: { 
                         color: '#555',
-                        callback: function(value) { return '$' + value.toFixed(12); }
+                        callback: function(value) { return '$' + value.toFixed(8); }
                     } 
                 }
             },
@@ -183,19 +180,19 @@ function updateChartColor(trend, currentPrice) {
         priceChart.data.datasets[0].borderColor = '#00ff00'; 
         newGradient.addColorStop(0, 'rgba(0, 255, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Price Rising ▲ ($${currentPrice.toFixed(12)})`;
+        trendIndicator.textContent = `Price Rising ▲ ($${currentPrice.toFixed(8)})`;
         trendIndicator.className = "trend-up";
     } else if (trend === 'down') {
         priceChart.data.datasets[0].borderColor = '#ff0000'; 
         newGradient.addColorStop(0, 'rgba(255, 0, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Price Falling ▼ ($${currentPrice.toFixed(12)})`;
+        trendIndicator.textContent = `Price Falling ▼ ($${currentPrice.toFixed(8)})`;
         trendIndicator.className = "trend-down";
     } else {
         priceChart.data.datasets[0].borderColor = '#ff6600'; 
         newGradient.addColorStop(0, 'rgba(255, 102, 0, 0.2)');
         newGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        trendIndicator.textContent = `Stable ($${currentPrice.toFixed(12)})`;
+        trendIndicator.textContent = `Stable ($${currentPrice.toFixed(8)})`;
         trendIndicator.className = "trend-neutral";
     }
     
@@ -203,25 +200,43 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- API-ABFRAGE: Marktpreis via offiziellem API-Server (über Proxy), Nutzerdaten via User-API ---
 function fetchCombinedData() {
-    // 1. Marktpreis direkt von der API-Struktur des Hauptservers holen (abgesichert über CORS-Proxy)
-    const priceApiUrl = 'https://server.duinocoin.com/api.json';
-    const priceProxyUrl = `https://corsproxy.io/?${encodeURIComponent(priceApiUrl)}`;
+    $.ajax({
+        url: 'https://api.coingecko.com/api/v3/simple/price?ids=duino-coin&vs_currencies=usd',
+        method: 'GET',
+        dataType: 'json',
+        success: function(coingeckoData) {
+            if (coingeckoData["duino-coin"] && coingeckoData["duino-coin"].usd) {
+                currentPriceUsd = coingeckoData["duino-coin"].usd;
+            }
+            fetchMinerAndBalanceData();
+        },
+        error: function() {
+            console.warn("Coingecko live price ticker timed out. Using fallback.");
+            fetchMinerAndBalanceData();
+        }
+    });
+}
 
-    fetch(priceProxyUrl)
-        .then(res => res.json())
-        .then(apiData => {
-            currentPriceUsd = apiData["Duco price"] || 0.00005;
-            
+function fetchMinerAndBalanceData() {
+    $.ajax({
+        url: 'https://raw.githubusercontent.com/revoxhere/duino-coin/master/api.json',
+        method: 'GET',
+        dataType: 'json',
+        success: function(apiData) {
+            if (currentPriceUsd === 0.00007021 || currentPriceUsd === 0.00005) {
+                currentPriceUsd = apiData["Duco price"] || currentPriceUsd;
+            }
+
             const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
             if (priceChart.data.labels.length > 15) {
                 priceChart.data.labels.shift();
                 priceChart.data.datasets[0].data.shift();
             }
             priceChart.data.labels.push(currentTime);
             priceChart.data.datasets[0].data.push(currentPriceUsd);
-            
+
             if (lastPrice !== 0) {
                 if (currentPriceUsd > lastPrice) updateChartColor('up', currentPriceUsd);
                 else if (currentPriceUsd < lastPrice) updateChartColor('down', currentPriceUsd);
@@ -229,118 +244,121 @@ function fetchCombinedData() {
                 updateChartColor('neutral', currentPriceUsd);
             }
             lastPrice = currentPriceUsd;
-            priceChart.update();
-        })
-        .catch(err => console.error("Global Price Sync failed:", err));
 
-    // 2. Deine User-Daten laden (und den über den Proxy geholten Preis nutzen)
-    const apiUrl = `https://server.duinocoin.com/v2/users/${username}`;
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+            // 2. Case-Insensitive Filter für die Balance
+            let userBalance = 0;
+            const searchName = username.toLowerCase();
 
-    fetch(proxyUrl)
-        .then(response => response.json())
-        .then(data => {
-
-            if (!data.success) {
-                console.error("User not found:", data.message);
-                return;
+            if (apiData["Balances"]) {
+                for (const [key, value] of Object.entries(apiData["Balances"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userBalance = parseFloat(value);
+                        break;
+                    }
+                }
+            } else if (apiData["Users orders"]) {
+                for (const [key, value] of Object.entries(apiData["Users orders"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userBalance = parseFloat(value.balance || 0);
+                        break;
+                    }
+                }
             }
 
-            const result = data.result ? data.result : data;
+            document.getElementById('account-balance').innerHTML = `${userBalance.toFixed(2)} <span class="currency">DUCO</span>`;
+            
+            const totalBalanceUsd = userBalance * currentPriceUsd;
+            const balanceCryptoBox = document.getElementById('account-balance').parentElement;
+            let usdSubText = balanceCryptoBox.querySelector('.usd-balance-subtext');
+            if (!usdSubText) {
+                usdSubText = document.createElement('p');
+                usdSubText.className = 'usd-balance-subtext';
+                usdSubText.style.color = 'var(--text-muted)';
+                usdSubText.style.fontSize = '14px';
+                usdSubText.style.marginTop = '5px';
+                balanceCryptoBox.appendChild(usdSubText);
+            }
+            usdSubText.innerHTML = `≈ $${totalBalanceUsd.toFixed(6)} USD`;
 
-            // Balance
-            const userBalance = parseFloat(result.balance.balance) || 0;
-            liveBalance = userBalance;
-            const balanceUsd = userBalance * currentPriceUsd;
-            document.getElementById('account-balance').innerHTML =
-                `${userBalance.toFixed(8)} <span class="currency">DUCO</span><br><span style="font-size:14px;color:var(--text-muted);">≈ $${balanceUsd.toFixed(6)} USD</span>`;
             handleMilestones(userBalance);
 
-            // Miner
+            // 3. Case-Insensitive Filter für die Miner
             let totalHashrate = 0;
             let hardwareCounts = {};
             let currentMinerCount = 0;
             calculatedDailyDuco = 0;
 
-            let formulaEarnings = 0;
-            const miners = result.miners || [];
-            miners.forEach(miner => {
-                currentMinerCount++;
-                const hr = parseFloat(miner.hashrate) || 0;
-                totalHashrate += hr;
+            if (apiData["Miners"]) {
+                let userMinersFound = null;
+                for (const [key, value] of Object.entries(apiData["Miners"])) {
+                    if (key.toLowerCase() === searchName) {
+                        userMinersFound = value;
+                        break;
+                    }
+                }
 
-                const sharetime = parseFloat(miner.sharetime) || 1;
-                const diff = parseFloat(miner.diff) || 0;
-                const wd = parseFloat(miner.wd) || 0;
-                formulaEarnings += (86400 / sharetime) * (wd / 3800000);
-
-                const software = miner.software || "Unknown Device";
-                hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
-            });
-
-            // Earnings per 24h: Balance-Delta Methode mit Formel als Fallback
-            const now = Date.now();
-            balanceHistory.push({ balance: userBalance, time: now });
-            if (balanceHistory.length > 60) balanceHistory.shift();
-
-            let deltaWorked = false;
-            if (balanceHistory.length >= 2) {
-                const oldest = balanceHistory[0];
-                const newest = balanceHistory[balanceHistory.length - 1];
-                const elapsedSeconds = (newest.time - oldest.time) / 1000;
-                const balanceDelta = newest.balance - oldest.balance;
-                if (elapsedSeconds > 0 && balanceDelta >= 0.000001) {
-                    calculatedDailyDuco = (balanceDelta / elapsedSeconds) * 86400;
-                    deltaWorked = true;
+                if (userMinersFound) {
+                    const minerList = Array.isArray(userMinersFound) ? userMinersFound : Object.values(userMinersFound);
+                    minerList.forEach(miner => {
+                        currentMinerCount++;
+                        if (miner.hashrate) {
+                            totalHashrate += parseFloat(miner.hashrate);
+                            calculatedDailyDuco += (parseFloat(miner.hashrate) * 0.0072);
+                        }
+                        let software = miner.software || "Unknown Device";
+                        hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
+                    });
+                } else {
+                    const allMiners = Array.isArray(apiData["Miners"]) ? apiData["Miners"] : Object.values(apiData["Miners"]);
+                    allMiners.forEach(miner => {
+                        if (miner.user && miner.user.toLowerCase() === searchName) {
+                            currentMinerCount++;
+                            if (miner.hashrate) {
+                                totalHashrate += parseFloat(miner.hashrate);
+                                calculatedDailyDuco += (parseFloat(miner.hashrate) * 0.0072);
+                            }
+                            let software = miner.software || "Unknown Device";
+                            hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
+                        }
+                    });
                 }
             }
 
-            if (!deltaWorked && formulaEarnings > 0) {
-                calculatedDailyDuco = formulaEarnings;
-            }
-
-            liveEarningsPerSecond = calculatedDailyDuco / 86400;
-
-            // Boxen befüllen
             document.getElementById('miner-count').textContent = currentMinerCount;
-
+            
             if (lastMinerCount !== -1 && currentMinerCount < lastMinerCount) {
                 playSound('alarm');
             }
             lastMinerCount = currentMinerCount;
 
             const hashrateKhas = totalHashrate / 1000;
-            document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(4)} <span class="currency">KH/s</span>`;
-            if (calculatedDailyDuco > 0) {
-                const label = deltaWorked ? '~' : '≈';
-                document.getElementById('estimated-earnings').innerHTML =
-                    `${label}${calculatedDailyDuco.toFixed(8)} <span class="currency">DUCO</span>`;
-            }
+            document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(2)} <span class="currency">KH/s</span>`;
+            document.getElementById('estimated-earnings').innerHTML = `${calculatedDailyDuco.toFixed(2)} <span class="currency">DUCO</span>`;
 
             // Hardware-Breakdown rendern
             const breakdownContainer = document.getElementById('hardware-breakdown');
+            breakdownContainer.innerHTML = "";
+            
             if (currentMinerCount === 0) {
                 breakdownContainer.innerHTML = `<p style="color:var(--text-muted); font-size:14px;">Waiting for miners...</p>`;
             } else {
-                breakdownContainer.innerHTML = "";
-                miners.forEach((miner, i) => {
-                    const hr = (parseFloat(miner.hashrate) / 1000).toFixed(2);
-                    const software = miner.software || "Unknown Device";
-                    const identifier = miner.identifier && miner.identifier !== "None" ? ` · ${miner.identifier}` : ``;
+                for (const [hwName, count] of Object.entries(hardwareCounts)) {
                     breakdownContainer.innerHTML += `
                         <div class="hardware-item">
-                            <span>⚙️ ${software}${identifier}</span>
-                            <strong>${hr} KH/s</strong>
+                            <span>⚙️ ${hwName}:</span>
+                            <strong>${count}</strong>
                         </div>
                     `;
-                });
+                }
             }
 
-            // Umrechnung in USD für den geschätzten Tagesverdienst
-            const dailyUsd = calculatedDailyDuco * currentPriceUsd;
-            document.getElementById('usd-earnings').innerHTML = `$${dailyUsd.toFixed(8)} <span class="currency">USD</span>`;
-        })
-        .catch(err => {
-            console.error("User API failed:", err);
-        });
+            const dailyUsdValue = calculatedDailyDuco * currentPriceUsd;
+            document.getElementById('usd-earnings').innerHTML = `$${dailyUsdValue.toFixed(8)} <span class="currency">USD</span>`;
+            
+            priceChart.update();
+        },
+        error: function(err) {
+            console.error("Critical API Stream sync failed:", err);
+        }
+    });
 }

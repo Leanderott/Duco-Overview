@@ -11,6 +11,8 @@ let currentPriceUsd = 0.00005;
 let liveBalance = 0;
 let liveEarningsPerSecond = 0;
 let liveCounterInterval = null;
+let initialBalance = null;
+let initialBalanceTime = null;
 
 const milestones = [1, 100, 500, 1000, 10000, 100000, 1000000, 10000000, 100000000];
 
@@ -51,19 +53,10 @@ loginBtn.addEventListener('click', () => {
         // Sofortige Abfrage beim Login
         fetchCombinedData();
         
-        // Intervall: Alle 20 Sekunden aktualisieren
-        setInterval(fetchCombinedData, 20000);
+        // Intervall: Alle 5 Sekunden aktualisieren
+        setInterval(fetchCombinedData, 5000);
 
-        // Live-Counter: Balance und Earnings jede Sekunde hochzählen
-        if (liveCounterInterval) clearInterval(liveCounterInterval);
-        liveCounterInterval = setInterval(() => {
-            liveBalance += liveEarningsPerSecond;
-            document.getElementById('account-balance').innerHTML =
-                `${liveBalance.toFixed(8)} <span class="currency">DUCO</span>`;
-            const dailyUsd = calculatedDailyDuco * currentPriceUsd;
-            document.getElementById('usd-earnings').innerHTML =
-                `$${(liveBalance * currentPriceUsd).toFixed(8)} <span class="currency">USD</span>`;
-        }, 1000);
+
     } else {
         alert("Please enter a valid Duino-Coin username.");
     }
@@ -278,19 +271,26 @@ function fetchCombinedData() {
                 const hr = parseFloat(miner.hashrate) || 0;
                 totalHashrate += hr;
 
-                // Tagesverdienst: (accepted Shares / Laufzeit in Sek) * 86400 * DUCO pro Share
-                // DUCO pro Share ≈ diff / 100000 (Duino-Coin Kolka Näherung)
-                const sharetime = parseFloat(miner.sharetime) || 1;
-                const diff = parseFloat(miner.diff) || 0;
-                const sharesPerDay = 86400 / sharetime;
-                const ducoPerShare = diff / 100000;
-                calculatedDailyDuco += sharesPerDay * ducoPerShare;
+
 
                 const software = miner.software || "Unknown Device";
                 hardwareCounts[software] = (hardwareCounts[software] || 0) + 1;
             });
 
-            // Live earnings per second
+            // Earnings per 24h basierend auf echtem Balance-Zuwachs
+            const now = Date.now();
+            if (initialBalance === null) {
+                initialBalance = userBalance;
+                initialBalanceTime = now;
+                calculatedDailyDuco = 0;
+                document.getElementById('estimated-earnings').innerHTML = `<span style="color:var(--text-muted);font-size:13px;">Wird gemessen...</span>`;
+            } else {
+                const elapsedSeconds = (now - initialBalanceTime) / 1000;
+                const balanceDelta = userBalance - initialBalance;
+                if (elapsedSeconds > 10 && balanceDelta > 0) {
+                    calculatedDailyDuco = (balanceDelta / elapsedSeconds) * 86400;
+                }
+            }
             liveEarningsPerSecond = calculatedDailyDuco / 86400;
 
             // Boxen befüllen
@@ -303,7 +303,10 @@ function fetchCombinedData() {
 
             const hashrateKhas = totalHashrate / 1000;
             document.getElementById('total-hashrate').innerHTML = `${hashrateKhas.toFixed(4)} <span class="currency">KH/s</span>`;
-            document.getElementById('estimated-earnings').innerHTML = `${calculatedDailyDuco.toFixed(8)} <span class="currency">DUCO</span>`;
+            if (calculatedDailyDuco > 0) {
+                document.getElementById('estimated-earnings').innerHTML =
+                    `${calculatedDailyDuco.toFixed(8)} <span class="currency">DUCO</span>`;
+            }
 
             // Hardware-Breakdown rendern
             const breakdownContainer = document.getElementById('hardware-breakdown');

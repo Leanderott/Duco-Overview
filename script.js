@@ -203,10 +203,13 @@ function updateChartColor(trend, currentPrice) {
     priceChart.update();
 }
 
-// --- API-ABFRAGE: Marktpreis via stabiler GitHub-API, Nutzerdaten via User-API ---
+// --- API-ABFRAGE: Marktpreis via offiziellem API-Server (über Proxy), Nutzerdaten via User-API ---
 function fetchCombinedData() {
-    // 1. Marktpreis unabhängig und stabil direkt vom GitHub-Spiegel holen
-    fetch('https://raw.githubusercontent.com/revoxhere/duino-coin/master/api.json')
+    // 1. Marktpreis direkt von der API-Struktur des Hauptservers holen (abgesichert über CORS-Proxy)
+    const priceApiUrl = 'https://server.duinocoin.com/api.json';
+    const priceProxyUrl = `https://corsproxy.io/?${encodeURIComponent(priceApiUrl)}`;
+
+    fetch(priceProxyUrl)
         .then(res => res.json())
         .then(apiData => {
             currentPriceUsd = apiData["Duco price"] || 0.00005;
@@ -230,7 +233,7 @@ function fetchCombinedData() {
         })
         .catch(err => console.error("Global Price Sync failed:", err));
 
-    // 2. Deine User-Daten laden (und den korrigierten Preis für die USD-Boxen nutzen)
+    // 2. Deine User-Daten laden (und den über den Proxy geholten Preis nutzen)
     const apiUrl = `https://server.duinocoin.com/v2/users/${username}`;
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
 
